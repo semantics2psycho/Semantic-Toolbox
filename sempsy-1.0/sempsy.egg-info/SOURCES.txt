@@ -1,0 +1,15 @@
+setup.py
+corpustrain/__init__.py
+corpustrain/train.py
+semdistance/__init__.py
+semdistance/distance.py
+semdistance/tests/__init__.py
+semdistance/tests/test_distance.py
+sempsy.egg-info/PKG-INFO
+sempsy.egg-info/SOURCES.txt
+sempsy.egg-info/dependency_links.txt
+sempsy.egg-info/top_level.txt
+textprocess/__init__.py
+textprocess/textcut.py
+textprocess/tests/__init__.py
+textprocess/tests/test_textcut.py
