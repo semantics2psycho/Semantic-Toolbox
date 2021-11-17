@@ -114,6 +114,11 @@ def distance_window(text, wind, k):
 
 
 # 求两文本相似性(以词语为单位)
-# similarities calculation between texts
-def sim_text(text1, text2):
-    return np.dot(text_distance_word(text1)[1], text_distance_word(text2)[1])
+# distance calculation between texts
+def dis_text(text1, text2):
+    return 1 - np.dot(text_distance_word(text1)[1], text_distance_word(text2)[1])
+
+# semantic relation distance
+def dis_sem_rel(pair1,pair2):
+
+
