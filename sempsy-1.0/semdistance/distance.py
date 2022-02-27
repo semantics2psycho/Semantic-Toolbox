@@ -1,93 +1,162 @@
 
 import gensim
 import numpy as np
+from scipy.spatial.distance import pdist
 from textprocess.textcut import *
+from semdistance.model_path import *
 
-# 词向量模型
+# get vector model
+def get_model(model_path):
+    model = gensim.models.KeyedVectors.load_word2vec_format(os.path.join(model_path), binary=True)
+    return model
+
 # word vector model
-model = gensim.models.KeyedVectors.load_word2vec_format(os.path.join('model_baiduwiki_sg_300d.bin'), binary=True)
+model_test = get_model(model_test_path)
+model_trained = get_model(model_trained_path)
 
-# 获取词语向量
 # get word vector
-def get_vector(word):
+def get_word_vector(word,have_model):
+    if have_model == 0:
+        model = model_test
+    else:
+        model = model_trained
     try:
         return model[word]
     except:
-        print(word)
-        print('该词语在词典中未检测到！')
-        # return np.zeros(300)[: int(300)]
+        try:
+            word_list = textcut(word)
+            vector_list = [model[w] for w in word_list]
+            return np.mean(vector_list,0)
 
-# norm计算向量的模；求单位向量
+        except:
+            print(word)
+            print('该词语在词典中未检测到！')
+            return np.zeros(300)[: int(300)]
+            # return 
+
 # unit vector calculation
 def _unitvec(v): return v/ np.linalg.norm(v)
 
+# get word sequence vector
+def get_word_sequence_vector(word_sequence,model=0):
+    vector_list = []
+    for word in word_sequence:
+        v = get_word_vector(word, model)
+        if not(np.all(v==0)):
+            vector_list.append(v)
+    return vector_list
 
-# 求词语之间的相似性，即求向量的余弦值
-# similarities calculation between words
-def similarity(word1, word2, size=300):
-    return np.dot(_unitvec(get_vector(word1)),
-                  _unitvec(get_vector(word2)))
+# distance calculation between words
+def dis_words(word1, word2, model=0,size=300):
+    return 1 - np.dot(_unitvec(get_word_vector(word1,model)),
+                  _unitvec(get_word_vector(word2,model)))
+
+# Euclidean distance
+def dis_Euclidean_words(word1, word2, model=0,size=300):
+    vec1 = get_word_vector(word1,model)
+    vec2 = get_word_vector(word2,model)
+    vec = np.vstack([vec1,vec2])
+    # sk = np.var(vec,axis=0,ddof=1)
+    # distance = np.sqrt(((vec1-vec2)**2 / sk).sum())
+    distance = pdist(vec, 'seuclidean')
+    return distance[0]
+                   
+def dis_Euclidean_words_by_vector(vec1,vec2):
+    return pdist(np.vstack([vec1,vec2]), 'seuclidean')[0]
+
+def dis_words_by_vec(vec1,vec2):
+    return 1 - np.dot(_unitvec(vec1),_unitvec(vec2))
+
+# forward flow distance calculation
+def dis_FFT(word_sequence,model=0):
+    vector_list = get_word_sequence_vector(word_sequence,model)
+    dis_j_mean = []
+    for j in range(1,len(vector_list)):
+        dis_j = []
+        for i in range(j):
+            dis_j.append(dis_words_by_vec(vector_list[j],vector_list[i]))
+        dis_j_mean.append(np.mean(dis_j,0))
+    distance = np.mean(dis_j_mean,0)
+    return distance
+
+# Adjacent words distance calculation
+def dis_ajac(word_sequence,model=0):
+    vector_list = get_word_sequence_vector(word_sequence,model)
+    dis_i_j = []
+    for j in range(len(vector_list)-1):
+        dis_i_j.append(dis_words_by_vec(vector_list[j], vector_list[j+1]))
+    distance = np.mean(dis_i_j,0)    
+    return distance
+
+# first last words distance calculation
+def dis_firstlast(word_sequence,model=0):
+    vector_list = get_word_sequence_vector(word_sequence,model)
+    return dis_words_by_vec(vector_list[0],vector_list[-1])
 
 
-# 求句子平均向量
+# get relation vector by subtracting word vectors from word pairs  
+def get_relation_vector(pair,model=0):
+        vec1,vec2 = [get_word_vector(p,model_path) for p in pair]
+        relation_vector = np.subtract(word1,word2)
+        return relation_vector
+
+# semantic relation distance
+def dis_pairs(pair1,pair2,model=0):
+    return 1 - np.dot(_unitvec(get_relation_vector(pair1,model)), _unitvec(get_sentence_vector(pair2,model)))
+
+
 # get sentence vector by averaging word vector in the sentence
-def mean_vector_sentence(s):
-    vectorized_sentence = [get_vector(w) for w in textcut(s)]
-    mean_vector_sentence = np.mean(vectorized_sentence, 0)
-    return mean_vector_sentence
+def get_sentence_vector(s, model=0):
+    vectorized_sentence = [get_word_vector(w,model) for w in textcut(s)]
+    sentence_vector = np.mean(vectorized_sentence, 0)
+    return sentence_vector
 
 
-# 求句子相似性
-# similarities calculation between sentences
-def sim_sentence(s1, s2):
-    return np.dot(_unitvec(mean_vector_sentence(s1)), _unitvec(mean_vector_sentence(s2)))
+# distance calculation between sentences
+def dis_sentences(s1, s2, model=0):
+    return 1 - np.dot(_unitvec(get_sentence_vector(s1,model)), _unitvec(get_sentence_vector(s2,model)))
 
-# 
+# distance calculatioin in text 
 def mean_distances(vectors, vec_len):
     dists = []
-    for i in range(vec_len):
-        for j in range(vec_len):
+    for i in range(vec_len - 1):
+        for j in range(i+1,vec_len):
             dists.append(1 - np.dot(_unitvec(vectors[i]), _unitvec(vectors[j])))
     mean_distance = np.mean(dists)
 
     return mean_distance
 
 
-# 基于词语的文章平均语义距离
 # word-based text mean semantic distance calculation
-def text_distance_word(text):
+def word_based_text_distance(text, model=0):
     words = textcut(text)
     wc = len(words)  # 词语个数
-    vecs_word = [get_vector(w) for w in words]
-    mean_vec = np.mean(vecs_word, 0)  # 文本平均向量
-    distance = mean_distances(vecs_word, len(vecs_word))  # 文章平均语义距离
+    vecs_word = [get_word_vector(w,model) for w in words]
+    distance = mean_distances(vecs_word, wc)  # 文章平均语义距离
 
-    return distance, mean_vec
+    return distance
 
-
-# 基于句子的文章平均语义距离,text为文本，wind为句子长度,句子间不重叠
 # sentence-based text mean semantic distance calculation(sentence no overlap)
-def text_distance_sentence(text, wind):
+def sentence_based_text_distance_no_window(text, wind, model=0):
     wcut = textcut(text)  # 分词
     # k = 5 #i的步长
     wc = len(wcut)  # 词语数
     left = wc % wind  # 余数
     # m = int(l / wind) * wind-k
-    m = wc - left - 1  # 最后一个句子的索引值
+    m = wc - left  # 最后一个句子的索引值
     vec_sents = []  # 每个句子的向量
-    for i in range(0, m + 1, wind):
+    for i in range(0, m, wind):
         if (i != m):
-            vec_sents.append(np.mean([get_vector(w) for w in wcut[i:i + wind]], 0))
+            vec_sents.append(np.mean([get_word_vector(w,model) for w in wcut[i:i + wind]], 0))
         else:
-            vec_sents.append(np.mean([get_vector(w) for w in wcut[i:]], 0))
+            vec_sents.append(np.mean([get_word_vector(w,model) for w in wcut[i:]], 0))
     distance = mean_distances(vec_sents, len(vec_sents))  # 平均语义距离
-    mean_vec = np.mean(vec_sents, 0)  # 文章平均向量
-    return distance, mean_vec
+    return distance
 
 
 # 计算全局语义距离，即文章的平均语义距离，滑动窗口，句子间有重叠，k为滑动距离
 # sentence-based text mean semantic distance calculation(sentence overlap)
-def distance_window(text, wind, k):
+def sentence_based_text_distance_by_window(text, wind, k, model=0):
     words_cut = textcut(text)  # 分词
     wc = len(words_cut)
     # k = 10  # i的步长
@@ -97,28 +166,24 @@ def distance_window(text, wind, k):
     # 所有句子窗口向量
     for i in range(0, c + 1, k):
         if (i != c):
-            vectors_sent.append(np.mean([get_vector(w) for w in words_cut[i:i + wind]], 0))
+            vectors_sent.append(np.mean([get_word_vector(w,model) for w in words_cut[i:i + wind]], 0))
         else:
-            vectors_sent.append(np.mean([get_vector(w) for w in words_cut[i:]], 0))
+            vectors_sent.append(np.mean([get_word_vector(w,model) for w in words_cut[i:]], 0))
     # vectors_sent = [np.mean([get_vector(w) for w in words_cut[i:i + wind]],0) for i in range(0,c,b)]
 
     sent_len = len(vectors_sent)  # 句子向量的个数
-    dists_between_sents = []  # 文章中任意两个句子间的语义距离
-    for i in range(sent_len - 1):
-        for j in range(i + 1, sent_len):
-            sim = np.dot(_unitvec(vectors_sent[i]), _unitvec(vectors_sent[j]))
-            dists_between_sents.append(1 - sim)
-    global_dist = np.mean(dists_between_sents)  # 文章平均语义距离
-
+    global_dist = mean_distances(vectors_sent, sent_len)
+    
     return global_dist
 
 
-# 求两文本相似性(以词语为单位)
-# distance calculation between texts
-def dis_text(text1, text2):
-    return 1 - np.dot(text_distance_word(text1)[1], text_distance_word(text2)[1])
-
-# semantic relation distance
-def dis_sem_rel(pair1,pair2):
-
-
+def text_distance(text,model=0,wind=0,k=0):
+    if wind == 0:
+        word_based_text_distance(text,model)
+    else:
+        if k == 0:
+            sentence_based_text_distance_no_window(text,model,wind)
+        else:
+            sentence_based_text_distance_by_window(text,model, wind, k)
+    
+    
