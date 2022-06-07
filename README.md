@@ -23,7 +23,7 @@ $ git clone https://github.com/semantics2psycho/Semantic-Toolbox
 
 ## How to run the codes
 
-The python script `scripts_allstep.py` contains all analysis that includes three aspects of functionality.
+The python script `scripts_allstep_english.py` contains all analysis that includes three aspects of functionality.
 
 ### text process
 
