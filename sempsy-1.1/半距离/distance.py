@@ -3,7 +3,7 @@ import gensim
 import numpy as np
 from scipy.spatial.distance import pdist
 from textprocess.textcut import *
-from semdistance.model_path import *
+from corpustrain.model_path import *
 from semdistance.get_vector import *
 
 
