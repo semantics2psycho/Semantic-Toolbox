@@ -116,7 +116,8 @@ def get_tfidf_weighted_vector(filepath,tfidf='gensim',split='document',model=0):
         
         w = corpus_sub[0]
         for w in corpus_sub:
-            vector_tfidf.append(np.dot(word_vector_sub[w],tfidf_sub[w]))
+            if w in word_vector_sub:
+                vector_tfidf.append(np.dot(word_vector_sub[w],tfidf_sub[w]))
 
         vector_tfidf_list.append(vector_tfidf)
     return vector_tfidf_list
