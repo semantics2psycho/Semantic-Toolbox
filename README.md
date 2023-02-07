@@ -1,4 +1,4 @@
-# Semantic distance to psychology toolbox (dis2psy)
+# psychology to Semantic distance toolbox (psy2sem)
 
 This repository includes a set of python scripts for semantic distance(similarity) calculation with large corpora.  The target audience is the calculation of semantic distance between _words, word pairs_, and _texts_ in _psychological experiments_. 
 
