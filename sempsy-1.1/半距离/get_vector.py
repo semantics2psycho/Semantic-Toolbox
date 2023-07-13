@@ -19,38 +19,65 @@ def get_model(model_path):
 # word vector model
 model_test = get_model(model_test_path)
 model_trained = get_model(model_trained_path)
+model_english = get_model(model_english_path)
 
 # get word vector
+# have_model:1 中文语料库
+# have_model:2 英文语料库
 def get_word_vector(word,have_model):
     if have_model == 0:
         model = model_test
-    else:
+    elif have_model == 1:
         model = model_trained
+    elif have_model == 2:
+        model = model_english
+            
     try:
         return model[word]
     except:
-        try:
+        if have_model == 1:
             word_list = textcut(word)
-            vector_list = [model[w] for w in word_list]
-            return np.mean(vector_list,0)
+            try :
+                vector_list = [model[w] for w in word_list]
+                return np.mean(vector_list,0)
+            except: 
+                print(word)
+                print('该词语在词典中未检测到！')
+                return np.zeros(300)[: int(300)]
 
-        except:
+        else:
             print(word)
             print('该词语在词典中未检测到！')
             return np.zeros(300)[: int(300)]
-            # return 
+            
 
 # unit vector calculation
 def _unitvec(v): return v/ np.linalg.norm(v)
 
 # get word sequence vector
 def get_word_sequence_vector(word_sequence,model=0):
+    '''
+    Parameters
+    ----------
+    word_sequence : list
+        words list
+    model : 0 or 1
+        if use model
+    
+    Return
+    ----------
+    vector_list : list
+        vector of words within word sequence
+
+    '''
     vector_list = []
+    word_list = []
     for word in word_sequence:
         v = get_word_vector(word, model)
-        if not(np.all(v==0)):
+        if not(np.all(v==0)) and str(v) != 'nan':
+            word_list.append(word)
             vector_list.append(v)
-    return vector_list
+    return word_list,vector_list
 
 
 # get relation vector by subtracting word vectors from word pairs  
@@ -63,13 +90,16 @@ def get_relation_vector(pair,model=0):
 # get sentence vector by averaging word vector in the sentence
 # parameter:
 # s: input data
-# model: 0,默认路径；1，model_path中放训练好的词向量路径
+# model: 0,默认路径；1，model_path中放训练好的词向量路径;2 英文词向量
 # preprocess: 0，为预处理的文本；1预处理后的文本-list格式
 def get_sentence_vector(s, model=0, preprocess=0):
     if preprocess == 1:
         vectorized_sentence = [get_word_vector(w,model) for w in s]
     else:
-        vectorized_sentence = [get_word_vector(w,model) for w in textcut(s)]
+        if model == 1:
+            vectorized_sentence = [get_word_vector(w,model) for w in textcut(s)]
+        elif model == 2:
+            vectorized_sentence = [get_word_vector(w,model) for w in textcut_en(s)]
     sentence_vector = np.mean(vectorized_sentence, 0)
     return sentence_vector
 

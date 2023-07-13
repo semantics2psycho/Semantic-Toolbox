@@ -5,6 +5,7 @@ from scipy.spatial.distance import pdist
 from textprocess.textcut import *
 from semdistance.get_vector import *
 
+def _unitvec(v): return v/ np.linalg.norm(v)
 
 # distance calculation between words
 def dis_words(word1, word2, model=0,size=300):
@@ -52,6 +53,15 @@ def dis_ajac(word_sequence,model=0):
 def dis_firstlast(word_sequence,model=0):
     vector_list = get_word_sequence_vector(word_sequence,model)
     return dis_words_by_vec(vector_list[0],vector_list[-1])
+
+# neighbor words distance calculation
+def dis_local(word_sequence,model=0):
+    dis = []
+    vector_list = get_word_sequence_vector(word_sequence,model)
+    for i in range(len(vector_list)-1):
+        dis.append(dis_words_by_vec(vector_list[i], vector_list[i+1]))
+    dis_mean = np.mean(dis)
+    return dis_mean
 
 
 # semantic relation distance
@@ -126,11 +136,11 @@ def sentence_based_text_distance_by_window(text, wind, k, model=0):
 
 def text_distance(text,model=0,wind=0,k=0):
     if wind == 0:
-        word_based_text_distance(text,model)
+        dis = word_based_text_distance(text,model)
     else:
         if k == 0:
-            sentence_based_text_distance_no_window(text,model,wind)
+            dis = sentence_based_text_distance_no_window(text,wind,model)
         else:
-            sentence_based_text_distance_by_window(text,model, wind, k)
-    
+            dis = sentence_based_text_distance_by_window(text, wind, k,model)
+    return dis
     
