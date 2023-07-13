@@ -21,6 +21,9 @@ import jieba.posseg
 import pandas as pd
 import sys,codecs
 import importlib,sys
+from nltk.corpus import stopwords
+# import nltk
+# nltk.download('stopwords')
 importlib.reload(sys)
 
 """Set stopwords: 
@@ -28,11 +31,27 @@ you can remove some meanningless and repetive words,which are stopwords.
 for example, 的 了 呀 啊 呢 呵 , you can also set the punctuation into the stopwords.
 """
 stop_words = open(os.path.join('textprocess/tests/cn_stopwords.txt'), encoding ='utf-8').read().split('\n')
+stop_words_en = stopwords.words('english')
 
 def readfile(filepath):
     with open(filepath,'r',encoding='utf-8') as f:
         text = f.read().strip('\n')
         # print('原文件内容为：','\n',text)
+    return text
+
+def readfiles(filepath,filetype='.txt',iflist='y'):
+    if filetype == '.txt':
+        with open(filepath,'r',encoding='utf-8') as f:
+            if iflist == 'y':
+                text = f.read().strip('\n').split(' ')
+                # print('原文件内容为：','\n',text)
+            else :
+                text = f.read().strip('\n')
+                    
+    elif filetype == '.xlsx':
+        df = pd.read_excel(filepath)
+        value = df.values[:,1:]
+        text = value.tolist()
     return text
 
 def readfile_inchunks(filepath,chunk_size=1024*1024):
@@ -44,12 +63,18 @@ def readfile_inchunks(filepath,chunk_size=1024*1024):
         yield chunk
         
 
-#delete punctuation
+#delete punctuation and english
 def puncdel(text):
     punc_en = string.punctuation  # English Punctuation
-    punc_cn = '~`!#$%^&*()_+-=|\';":/.,?><~·！@#￥%……&*（）\u3000——+-=“：’；、。，？》《{}”' # Chinese Punctuation
+    punc_cn = 'a-zA-Z~`!#$%^&*()_+-=|\';":/.,?><~·！@#￥%……&*（）\u3000——+-=“：’；、。，？》空《{}”' # Chinese Punctuation
     res = re.sub('[{}]'.format(punc_en),"",text)
     res = re.sub('[{}]'.format(punc_cn),"",res)
+    print('text without Punctuation：','\n',res)
+    return res
+
+def puncdel_en(text):
+    punc = '~`!#$%^&*()_+-=|\';":/.,?><~·！@#￥%……&*'
+    res = re.sub('[{}]'.format(punc),"",text)
     print('text without Punctuation：','\n',res)
     return res
 
@@ -82,7 +107,12 @@ def textcut(text,stop=1,stopwords=stop_words):
     # print('分词结果：', '\n', words)
     # print('词数统计：', count)
     return words
-    
+
+def textcut_en(text,stopwords=stop_words_en):
+    text_del = puncdel_en(text)
+    words_cut = text_del.split()
+    words = [w for w in words_cut if w not in stopwords]
+    return words
 
 flag_en2cn = {
     'a': '形容词', 'ad': '副形词', 'ag': '形语素', 'an': '名形词', 'b': '区别词',
